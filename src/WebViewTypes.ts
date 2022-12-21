@@ -112,6 +112,7 @@ export interface WebViewNavigation extends WebViewNativeEvent {
 
 export interface ShouldStartLoadRequest extends WebViewNavigation {
   isTopFrame: boolean;
+  isRedirect?: boolean;
 }
 
 export interface FileDownload {

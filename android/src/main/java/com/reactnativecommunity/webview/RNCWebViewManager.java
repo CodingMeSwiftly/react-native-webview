@@ -100,6 +100,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -952,6 +953,17 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
 
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, String url) {
+      return this.shouldOverrideUrlLoading(view, url, null);
+    }
+
+    @TargetApi(Build.VERSION_CODES.N)
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+      final String url = request.getUrl().toString();
+      return this.shouldOverrideUrlLoading(view, url, request.isRedirect());
+    }
+
+    private boolean shouldOverrideUrlLoading(WebView view, String url, @Nullable() Boolean isRedirect) {
       final RNCWebView rncWebView = (RNCWebView) view;
       final boolean isJsDebugging = ((ReactContext) view.getContext()).getJavaScriptContextHolder().get() == 0;
 
@@ -962,6 +974,9 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
 
         final WritableMap event = createWebViewEvent(view, url);
         event.putInt("lockIdentifier", lockIdentifier);
+        if (Objects.nonNull(isRedirect)) {
+          event.putBoolean("isRedirect", isRedirect);
+        }
         rncWebView.sendDirectMessage("onShouldStartLoadWithRequest", event);
 
         try {
@@ -990,20 +1005,17 @@ public class RNCWebViewManager extends SimpleViewManager<WebView> {
       } else {
         FLog.w(TAG, "Couldn't use blocking synchronous call for onShouldStartLoadWithRequest due to debugging or missing Catalyst instance, falling back to old event-and-load.");
         progressChangedFilter.setWaitingForCommandLoadUrl(true);
+        final WritableMap event = createWebViewEvent(view, url);
+        if (Objects.nonNull(isRedirect)) {
+          event.putBoolean("isRedirect", isRedirect);
+        }
         ((RNCWebView) view).dispatchEvent(
           view,
           new TopShouldStartLoadWithRequestEvent(
             view.getId(),
-            createWebViewEvent(view, url)));
+            event));
         return true;
       }
-    }
-
-    @TargetApi(Build.VERSION_CODES.N)
-    @Override
-    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-      final String url = request.getUrl().toString();
-      return this.shouldOverrideUrlLoading(view, url);
     }
 
     @Override
